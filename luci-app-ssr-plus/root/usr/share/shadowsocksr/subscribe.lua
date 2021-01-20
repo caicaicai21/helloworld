@@ -193,18 +193,30 @@ local function processData(szType, content)
 			result.server_port = query[1]
 			local params = {}
 			for _, v in pairs(split(query[2], '&')) do
-				local t = split(v, '=')
-				params[t[1]] = t[2]
+				if v:find("plugin") == 1 then
+					local idx_pn = v:find("=")
+					params[v:sub(1, idx_pn - 1)] = v:sub(idx_pn + 1, #v)
+				else
+					local t = split(v, '=')
+					params[t[1]] = t[2]
+				end
 			end
 			if params.plugin then
 				local plugin_info = UrlDecode(params.plugin)
 				local idx_pn = plugin_info:find(";")
+				local plugin = ""
+				local plugin_opts = ""
 				if idx_pn then
-					result.plugin = plugin_info:sub(1, idx_pn - 1)
-					result.plugin_opts = plugin_info:sub(idx_pn + 1, #plugin_info)
+					plugin = plugin_info:sub(1, idx_pn - 1)
+					plugin_opts = plugin_info:sub(idx_pn + 1, #plugin_info)
 				else
-					result.plugin = plugin_info
+					plugin = plugin_info
 				end
+				if plugin == "simple-obfs" then
+					plugin = "obfs-local"
+				end
+				result.plugin = plugin
+				result.plugin_opts = plugin_opts
 			end
 		else
 			result.server_port = host[2]
@@ -340,7 +352,8 @@ local function processData(szType, content)
 	result.alias = nil
 	local switch_enable = result.switch_enable
 	result.switch_enable = nil
-	result.hashkey = md5(jsonStringify(result))
+	-- result.hashkey = md5(jsonStringify(result))
+	result.hashkey = md5(alias)
 	result.alias = alias
 	result.switch_enable = switch_enable
 	return result
@@ -485,7 +498,7 @@ local execute = function()
 		ucic:commit(name)
 		-- 如果原有服务器节点已经不见了就尝试换为第一个节点
 		local globalServer = ucic:get_first(name, 'global', 'global_server', '')
-		if globalServer ~= "nil" then
+		if globalServer ~= nil then
 			local firstServer = ucic:get_first(name, uciType)
 			if firstServer then
 				if not ucic:get(name, globalServer) then
